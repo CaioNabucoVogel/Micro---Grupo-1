@@ -1,0 +1,1 @@
+Esse é um projeto da matéria de microcontroladores com o objetivo de auxiliar a empresa oceânica com um problema de mensurar a altura das ondas nos locais de operação.
