@@ -1,0 +1,4 @@
+filterpy == 1.4.5
+matplotlib == 3.10.7
+numpy == 2.3.5
+pyserial == 3.5
