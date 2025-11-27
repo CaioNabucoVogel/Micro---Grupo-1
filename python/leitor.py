@@ -53,16 +53,14 @@ flageranegativo = 0
 flagerapositivo = 0
 for i in range(50):
     if acely<= -3.2:
-        print("entrei no menor")
         acely = acely + 1.6
         flagaumenta = 1
         if flageranegativo:
             flageranegativo = 0
         else:
             flageranegativo = 1
-        msg = f"acelx:2.5, acely:{acely}, tempo:{cont/10}\n"
+        msg = f"acelx:2.5, acely:{acely}, tempo:{cont}\n"
     elif acely>= 3.2:
-        print("entrei aqui no maior")
         acely = acely - 1.6
         flagaumenta = 0
         if flagerapositivo:
@@ -88,7 +86,6 @@ for i in range(50):
                 msg = f"acelx:2.5, acely:{acely}, tempo:{cont}\n"
                     
     else:
-        print("entrei no else")
         if flagaumenta:
             acely = acely + 1.6
             msg = f"acelx:2.5, acely:{acely}, tempo:{cont}\n"
