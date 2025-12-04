@@ -8,11 +8,10 @@ from datetime import datetime
 
 class GraficoAltura:
 
-    def __init__(self, port:str):
+    def __init__(self, com:str, port: int):
         client = MongoClient("mongodb://localhost:27017/")
         db = client["meu_banco"]
         self.medicoes = db["medicoes"]
-        self.alturas = db["alturas"]
         self.pos0 = 0
         self.acel0 = 0
         self.vel0 = 0
@@ -20,7 +19,7 @@ class GraficoAltura:
         self.tempo0 = 0
         self.vel = 0
         self.pos = 0
-        self.ser = serial.serial_for_url(port,9600, timeout=1)
+        self.ser = serial.Serial(com,port)
         time.sleep(2)
         #Arrays de dados
         self.x_data = np.array([], dtype=float)
@@ -105,36 +104,31 @@ class GraficoAltura:
                 if line_read:
                     # Tratando a linha com formato: acelx:%f, acely:%f
                     partes = line_read.split(',')
-                    self.acelx = float(partes[0].split(':')[1])
-                    self.acely = float(partes[1].split(':')[1])
-                    self.acelz = float(partes[2].split(':')[1])
-                    self.gyrx = float(partes[3].split(':')[1])
-                    self.gyry = float(partes[4].split(':')[1])
-                    self.gyrz = float(partes[5].split(':')[1])
-                    self.tempototal = float(partes[6].split(':')[1])
-                    self.tempo = self.tempototal - self.tempo0
-                    self.tempo0 = self.tempototal
-                    self.calculavel()
-                    self.calculapos()
-                    self.acel0 = self.acely
-                    self.vel0 = self.vel
-                    self.pos0 = self.pos
-                    print(self.tempo)
-                    temporeal = datetime.now()
-                    med = {"Acelx": self.acelx, "Acely": self.acely, "Acelz": self.acelz, "Gyrox": self.gyrx,"Gyroy": self.gyry,"Gyroz": self.gyrz,"TempoRelativo": self.tempototal, "TempoReal": temporeal}
-                    self.medicoes.insert_one(med)
-                    self.alturas.insert_one({"Altura": self.pos, "TempoRelativo": self.tempototal, "TempoReal": temporeal})
-                    # encontra a altura
+                    if len(partes) != 1:
+                        print(partes)
+                        self.acelz = float(partes[0].split(':')[1])
+                        print(f"acelz: {self.acelz}")
+                        self.altura = float(partes[1].split(':')[1])
+                        print(f"altura: {self.altura}")
+                        self.tempototal = float(partes[2].split(':')[1])/1000
+                        print(f"tempo: {self.tempototal}")
+                        if len(partes) >= 4:
+                            self.pico = float(partes[3].split(':')[1])
+                        else :
+                            self.pico = "não medido"
+                        temporeal = datetime.now()
+                        med = {"Acelz": self.acelz, "Altura": self.altura, "TempoRelativo": self.tempototal, "AlturaPico": self.pico, "TempoReal": temporeal}
+                        self.medicoes.insert_one(med)
 
-                    # Empilha novos dados no array numpy
-                    self.y_data = np.append(self.y_data, self.pos)
-                    self.x_data = np.append(self.x_data, self.tempototal)
+                        # Empilha novos dados no array numpy
+                        self.y_data = np.append(self.y_data, self.altura)
+                        self.x_data = np.append(self.x_data, self.tempototal)
 
-                    self.line.set_data(self.x_data, self.y_data)
+                        self.line.set_data(self.x_data, self.y_data)
 
-                    # Ajusta limites do gráfico dinamicamente
-                    self.ax.relim()
-                    self.ax.autoscale_view()
+                        # Ajusta limites do gráfico dinamicamente
+                        self.ax.relim()
+                        self.ax.autoscale_view()
 
             except ValueError:
                 pass

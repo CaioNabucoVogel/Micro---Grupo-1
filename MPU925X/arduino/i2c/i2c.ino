@@ -5,7 +5,7 @@
 MPU925X IMU(Wire, 0x68);
 Madgwick filter;
 float pico = 0;
-
+unsigned long instanteAnterior = millis();
 unsigned long microsPerReading, microsPrevious;
 
 // --- Variáveis de Física ---
@@ -44,7 +44,7 @@ HighPassFilter hpFilterVel(0.15, 0.01);
 HighPassFilter hpFilterPos(0.15, 0.01);
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   while (!Serial) {}
 
   int status = IMU.begin();
@@ -154,25 +154,34 @@ void loop() {
 
   // Output (Multiplicado por 100 para ver em CM no plotter)
 
-  //unsigned long ultimo = mill
-  //if (agora - ultimo >= 100) {
+  unsigned long instanteAtual = millis();
+  if (instanteAtual > instanteAnterior + 100) {
     Serial.print("AcelZ:");
     Serial.print(linearAccelZ);
     Serial.print(",");
     Serial.print("Altura_cm:");
     float altura = positionZ * 100;
-    Serial.println(altura); // Exibe em CM
-  //}
-  
-  unsigned long ultimoPico = millis();
-  if (ultimoPico > 20000) {
-    if (altura > pico)
-      pico = altura;   
+    Serial.print(altura); // Exibe em CM
+    Serial.print(", temporelativo:");
+    Serial.print(millis());
+    unsigned long ultimoPico = millis();
+    if (ultimoPico > 20000) {
+      if (altura > pico)
+        pico = altura;   
 
-    Serial.print(",");
-    Serial.print("Pico:");
-    Serial.print(pico);
+      Serial.print(",");
+      Serial.print("Pico:");
+      Serial.print(pico);
+      Serial.println();
+    }
+    else {
+      Serial.println();
+    }
+
+    instanteAnterior = instanteAtual;
   }
+  
+  
 
   delay(10); 
 }
