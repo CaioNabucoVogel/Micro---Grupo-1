@@ -1,18 +1,16 @@
+# grafico.py
 import numpy as np
-import time 
+import time
 import serial
+import matplotlib
+matplotlib.use('Agg')  # backend sem janela
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from pymongo import MongoClient
-from datetime import datetime
+from io import BytesIO
 
 class GraficoAltura:
 
     def __init__(self, port:str):
-        client = MongoClient("mongodb://localhost:27017/")
-        db = client["meu_banco"]
-        self.medicoes = db["medicoes"]
-        self.alturas = db["alturas"]
         self.pos0 = 0
         self.acel0 = 0
         self.vel0 = 0
@@ -20,13 +18,13 @@ class GraficoAltura:
         self.tempo0 = 0
         self.vel = 0
         self.pos = 0
-        self.ser = serial.serial_for_url(port,9600, timeout=1)
+
+        self.ser = serial.serial_for_url(port, 9600, timeout=1)
         time.sleep(2)
-        #Arrays de dados
+
         self.x_data = np.array([], dtype=float)
         self.y_data = np.array([], dtype=float)
 
-        # Gráfico 
         self.fig, self.ax = plt.subplots()
         (self.line,) = self.ax.plot([], [], 'bo-', markersize=4)
         self.ax.set_xlim(0, 50)
@@ -34,16 +32,9 @@ class GraficoAltura:
         self.ax.set_xlabel("Tempo")
         self.ax.set_ylabel("Altura")
 
-    def calculavel(self):
-        self.vel = self.vel0+self.acely*self.tempo
+        # inicia animação
+        self.ani = FuncAnimation(self.fig, self.update, interval=100)
 
-    def calculapos(self):
-        
-        self.pos = self.pos0+self.vel0*self.tempo+(self.acely*(self.tempo**2)/2)
-
-   
-
-    #script de teste local COMENTAR QUANDO FOR TESTAR DE VERDADE
     def teste(self):
         cont = 0
         acely = 3.2
@@ -96,14 +87,17 @@ class GraficoAltura:
             time.sleep(0.5)
             cont+=1
 
-    #função que atualiza o gráfico
-    def update(self,frame):
-        #leitura do serial
+    def calculavel(self):
+        self.vel = self.vel0 + self.acely * self.tempo
+
+    def calculapos(self):
+        self.pos = self.pos0 + self.vel0 * self.tempo + (self.acely * (self.tempo**2) / 2)
+
+    def update(self, frame):
         if self.ser.in_waiting > 0:
             try:
                 line_read = self.ser.readline().decode('utf-8').strip()
                 if line_read:
-                    # Tratando a linha com formato: acelx:%f, acely:%f
                     partes = line_read.split(',')
                     self.acelx = float(partes[0].split(':')[1])
                     self.acely = float(partes[1].split(':')[1])
@@ -112,27 +106,21 @@ class GraficoAltura:
                     self.gyry = float(partes[4].split(':')[1])
                     self.gyrz = float(partes[5].split(':')[1])
                     self.tempototal = float(partes[6].split(':')[1])
+
                     self.tempo = self.tempototal - self.tempo0
                     self.tempo0 = self.tempototal
+
                     self.calculavel()
                     self.calculapos()
-                    self.acel0 = self.acely
+
                     self.vel0 = self.vel
                     self.pos0 = self.pos
-                    print(self.tempo)
-                    temporeal = datetime.now()
-                    med = {"Acelx": self.acelx, "Acely": self.acely, "Acelz": self.acelz, "Gyrox": self.gyrx,"Gyroy": self.gyry,"Gyroz": self.gyrz,"TempoRelativo": self.tempototal, "TempoReal": temporeal}
-                    self.medicoes.insert_one(med)
-                    self.alturas.insert_one({"Altura": self.pos, "TempoRelativo": self.tempototal, "TempoReal": temporeal})
-                    # encontra a altura
 
-                    # Empilha novos dados no array numpy
                     self.y_data = np.append(self.y_data, self.pos)
                     self.x_data = np.append(self.x_data, self.tempototal)
 
                     self.line.set_data(self.x_data, self.y_data)
 
-                    # Ajusta limites do gráfico dinamicamente
                     self.ax.relim()
                     self.ax.autoscale_view()
 
@@ -141,8 +129,16 @@ class GraficoAltura:
 
         return self.line
 
-    def execute(self):
-        ani = FuncAnimation(self.fig, self.update, interval=100, cache_frame_data=False)
-        plt.show()
-        self.ser.close()
+    # MÉTODO IMPORTANTE: renderiza o frame PNG
+    def get_frame(self):
+        buf = BytesIO()
+        self.fig.savefig(buf, format="png")
+        buf.seek(0)
+        return buf.read()
 
+    # STREAMING: gera frames infinitamente
+    def stream(self):
+        while True:
+            frame = self.get_frame()
+            yield (b'--frame\r\n'
+                   b'Content-Type: image/png\r\n\r\n' + frame + b'\r\n')
