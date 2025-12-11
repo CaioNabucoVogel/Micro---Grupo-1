@@ -40,7 +40,7 @@ class GraficoAltura:
     #script de teste local COMENTAR QUANDO FOR TESTAR DE VERDADE
     def teste(self):
         for i in range(50):
-            msg = f"acelz:2,altura:{i},tempo:{i},pico:{i}\n"
+            msg = f"acelz:2,altura:{i},tempo:{1000*i},pico:{i}\n"
 
             self.ser.write(msg.encode('utf-8'))
             print("Enviado:", msg.strip())
