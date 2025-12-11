@@ -8,10 +8,10 @@ from datetime import datetime
 
 class GraficoAltura:
 
-    def __init__(self, com:str, port: int):
-        client = MongoClient("mongodb://localhost:27017/")
-        db = client["meu_banco"]
-        self.medicoes = db["medicoes"]
+    def __init__(self, com:str, port: int, teste: int):
+        # client = MongoClient("mongodb://localhost:27017/")
+        # db = client["meu_banco"]
+        # self.medicoes = db["medicoes"]
         self.pos0 = 0
         self.acel0 = 0
         self.vel0 = 0
@@ -19,7 +19,10 @@ class GraficoAltura:
         self.tempo0 = 0
         self.vel = 0
         self.pos = 0
-        self.ser = serial.Serial(com,port)
+        if teste:
+            self.ser = serial.serial_for_url(com,baudrate=port)
+        else:
+            self.ser = serial.Serial(com,port)
         time.sleep(2)
         #Arrays de dados
         self.x_data = np.array([], dtype=float)
@@ -32,68 +35,16 @@ class GraficoAltura:
         self.ax.set_ylim(-100, 100)
         self.ax.set_xlabel("Tempo")
         self.ax.set_ylabel("Altura")
-
-    def calculavel(self):
-        self.vel = self.vel0+self.acely*self.tempo
-
-    def calculapos(self):
-        
-        self.pos = self.pos0+self.vel0*self.tempo+(self.acely*(self.tempo**2)/2)
-
    
 
     #script de teste local COMENTAR QUANDO FOR TESTAR DE VERDADE
     def teste(self):
-        cont = 0
-        acely = 3.2
-        flageranegativo = 0
-        flagerapositivo = 0
         for i in range(50):
-            if acely<= -3.2:
-                acely = acely + 1.6
-                flagaumenta = 1
-                if flageranegativo:
-                    flageranegativo = 0
-                else:
-                    flageranegativo = 1
-                msg = f"acelx:2.5, acely:{acely}, acelz:0, gyrx:0, gyry:0,gyrz:0, tempo:{cont}\n"
-            elif acely>= 3.2:
-                acely = acely - 1.6
-                flagaumenta = 0
-                if flagerapositivo:
-                    flagerapositivo = 0
-                else:
-                    flagerapositivo = 1
-                msg = f"acelx:2.5, acely:{acely}, acelz:0, gyrx:0, gyry:0,gyrz:0, tempo:{cont}\n"
-            elif acely == 0:
-                if flagerapositivo and not flageranegativo:
-                    flagaumenta = 1
-                    acely += 1.6
-                    msg = f"acelx:2.5, acely:{acely}, acelz:0, gyrx:0, gyry:0,gyrz:0, tempo:{cont}\n"
-                elif flageranegativo and not flagerapositivo:
-                    flagaumenta = 0
-                    acely -=1.6
-                    msg = f"acelx:2.5, acely:{acely}, acelz:0, gyrx:0, gyry:0,gyrz:0, tempo:{cont}\n"  
-                else:
-                    if flagaumenta:
-                        acely = acely + 1.6
-                        msg = f"acelx:2.5, acely:{acely}, acelz:0, gyrx:0, gyry:0,gyrz:0, tempo:{cont}\n"
-                    else:
-                        acely = acely - 1.6
-                        msg = f"acelx:2.5, acely:{acely}, acelz:0, gyrx:0, gyry:0,gyrz:0, tempo:{cont}\n"
-                            
-            else:
-                if flagaumenta:
-                    acely = acely + 1.6
-                    msg = f"acelx:2.5, acely:{acely}, acelz:0, gyrx:0, gyry:0,gyrz:0, tempo:{cont}\n"
-                else:
-                    acely = acely - 1.6
-                    msg = f"acelx:2.5, acely:{acely}, acelz:0, gyrx:0, gyry:0,gyrz:0, tempo:{cont}\n"
+            msg = f"acelz:2,altura:{i},tempo:{i},pico:{i}\n"
 
             self.ser.write(msg.encode('utf-8'))
             print("Enviado:", msg.strip())
-            time.sleep(0.5)
-            cont+=1
+        return
 
     #função que atualiza o gráfico
     def update(self,frame):
@@ -117,8 +68,7 @@ class GraficoAltura:
                         else :
                             self.pico = "não medido"
                         temporeal = datetime.now()
-                        med = {"Acelz": self.acelz, "Altura": self.altura, "TempoRelativo": self.tempototal, "AlturaPico": self.pico, "TempoReal": temporeal}
-                        self.medicoes.insert_one(med)
+                        
 
                         # Empilha novos dados no array numpy
                         self.y_data = np.append(self.y_data, self.altura)
@@ -129,8 +79,14 @@ class GraficoAltura:
                         # Ajusta limites do gráfico dinamicamente
                         self.ax.relim()
                         self.ax.autoscale_view()
+                        try:
+                            med = {"Acelz": self.acelz, "Altura": self.altura, "TempoRelativo": self.tempototal, "AlturaPico": self.pico, "TempoReal": temporeal}
+                            self.medicoes.insert_one(med)
+                        except:
+                            print("mongoDb não funcionou") 
 
             except ValueError:
+                print("erro na leitura")
                 pass
 
         return self.line

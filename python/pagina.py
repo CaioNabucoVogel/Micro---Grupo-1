@@ -1,6 +1,6 @@
 ## Página do flask que mostra o simulador de onda# app.py
 from flask import Flask, Response, render_template
-from python.graficoteste import GraficoAltura
+from leitor import GraficoAltura
 
 app = Flask(__name__)
 
